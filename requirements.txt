@@ -1,0 +1,8 @@
+agno
+openai
+google-generativeai
+fastapi
+uvicorn
+prisma
+python-dotenv
+pydantic

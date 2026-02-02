@@ -1,0 +1,112 @@
+generator client {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  tenant_id    String        @id @default(uuid()) @db.Uuid
+  tenant_name  String
+  users        UserProfile[]
+  agents       Agent[]
+}
+
+model UserProfile {
+  user_id       String              @id @default(uuid()) @db.Uuid
+  tenant_id     String              @db.Uuid
+  full_name     String
+  email         String              @unique
+  tenant        Tenant              @relation(fields: [tenant_id], references: [tenant_id])
+  agents        Agent[]             @relation("CreatedBy")
+  subscriptions AgentSubscription[]
+}
+
+model Agent {
+  agent_id    String  @id @default(uuid()) @db.Uuid
+  tenant_id   String? @db.Uuid // Null for Global Marketplace agents
+  created_by  String  @db.Uuid
+  agent_name  String
+  description String? @db.Text
+  status      String  @default("active")
+  
+  // MARKETPLACE FIELDS
+  access_type String  @default("PRIVATE") // GLOBAL or PRIVATE
+  is_public   Boolean @default(false)
+
+  agent_model_config AgentModelConfig? 
+  prompts            AgentPrompt[]
+  memory_config      AgentMemoryConfig?
+  ops_config         AgentOpsConfig?
+  subscriptions      AgentSubscription[]
+  sessions           AgentSession[]
+
+  tenant             Tenant?      @relation(fields: [tenant_id], references: [tenant_id])
+  creator            UserProfile @relation("CreatedBy", fields: [created_by], references: [user_id])
+}
+
+model AgentSubscription {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  agent_id   String   @db.Uuid
+  created_at DateTime @default(now())
+  user       UserProfile @relation(fields: [user_id], references: [user_id])
+  agent      Agent       @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade)
+  @@unique([user_id, agent_id])
+}
+
+model AgentModelConfig {
+  id                  String  @id @default(uuid()) @db.Uuid
+  agent_id            String  @unique @db.Uuid
+  model_provider      String  @default("openai")
+  model_name          String  @default("gpt-4o")
+  temperature         Float   @default(0.7)
+  agent               Agent   @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade)
+}
+
+model AgentPrompt {
+  id              String  @id @default(uuid()) @db.Uuid
+  agent_id        String  @db.Uuid
+  instructions    String? @db.Text
+  system_message  String? @db.Text
+  is_active       Boolean @default(true)
+  agent           Agent   @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade)
+}
+
+model AgentMemoryConfig {
+  id                    String  @id @default(uuid()) @db.Uuid
+  agent_id              String  @unique @db.Uuid
+  enable_agentic_memory Boolean @default(false)
+  num_history_runs      Int     @default(3)
+  agent                 Agent   @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade)
+}
+
+model AgentOpsConfig {
+  id               String  @id @default(uuid()) @db.Uuid
+  agent_id         String  @unique @db.Uuid
+  markdown         Boolean @default(true)
+  output_schema    String? @db.Text 
+  agent            Agent   @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade)
+}
+
+model AgentSession {
+  session_id String        @id @default(uuid())
+  agent_id   String        @db.Uuid
+  start_time DateTime      @default(now())
+  status     String        @default("running")
+  agent      Agent         @relation(fields: [agent_id], references: [agent_id], onDelete: Cascade)
+  outputs    AgentOutput[]
+}
+
+model AgentOutput {
+  output_id      String       @id @default(uuid()) @db.Uuid
+  session_id     String
+  input_payload  String       @db.Text
+  raw_response   Json?        
+  output_schema  String?      @db.Text
+  created_at     DateTime     @default(now())
+  session        AgentSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+}
