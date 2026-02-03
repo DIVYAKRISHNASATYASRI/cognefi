@@ -1,7 +1,60 @@
 from app.core.db import db
-from app.api.schemas import AgentCreate,AgentUpdate
+from app.schemas.agent_schema import AgentCreate,AgentUpdate
 
 class AgentService:
+
+    @staticmethod
+    async def create_agent(data: AgentCreate):
+        """
+        Creates an agent and distributes data across 5 normalized tables.
+        """
+        return await db.agent.create(
+            data={
+                "tenant_id": data.tenant_id,
+                "created_by": data.created_by,
+                "agent_name": data.agent_name,
+                "description": data.description,
+                "access_type": data.access_type,
+                "is_public": data.is_public,
+                
+                # 1. Create Model Config
+                "agent_model_config": {
+                    "create": {
+                        "model_provider": data.model_provider,
+                        "model_name": data.model_name,
+                        "temperature": data.temperature
+                    }
+                },
+                
+                # 2. Create Initial Active Prompt
+                "prompts": {
+                    "create": [
+                        {
+                            "instructions": data.instructions,
+                            "system_message": data.system_message,
+                            "is_active": True
+                        }
+                    ]
+                },
+                
+                # 3. Create Ops Config
+                "ops_config": {
+                    "create": {
+                        "markdown": data.markdown
+                    }
+                },
+                
+                # 4. Create empty Memory Config
+                "memory_config": {
+                    "create": {}
+                }
+            },
+            include={
+                "agent_model_config": True,
+                "prompts": True
+            }
+        )
+
     @staticmethod
     async def get_marketplace():
         return await db.agent.find_many(

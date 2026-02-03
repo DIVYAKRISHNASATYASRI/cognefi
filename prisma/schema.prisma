@@ -9,31 +9,41 @@ datasource db {
 }
 
 model Tenant {
-  tenant_id    String        @id @default(uuid()) @db.Uuid
-  tenant_name  String
-  users        UserProfile[]
-  agents       Agent[]
+  tenant_id         String        @id @default(uuid()) @db.Uuid
+  tenant_name       String
+  tenant_code       String        @unique
+  industry          String?
+  subscription_plan String        @default("free")
+  status            String        @default("active")
+  created_at        DateTime      @default(now())
+  updated_at        DateTime      @updatedAt
+  
+  users             UserProfile[]
+  agents            Agent[]
 }
 
 model UserProfile {
   user_id       String              @id @default(uuid()) @db.Uuid
-  tenant_id     String              @db.Uuid
+  tenant_id     String?             @db.Uuid
   full_name     String
   email         String              @unique
-  tenant        Tenant              @relation(fields: [tenant_id], references: [tenant_id])
+  role          String              @default("USER") // TENANT_ADMIN, USER
+  status        String              @default("active")
+  permissions   Json?               // For manage_users, manage_agents
+  created_at    DateTime            @default(now())
+
+  tenant        Tenant?             @relation(fields: [tenant_id], references: [tenant_id])
   agents        Agent[]             @relation("CreatedBy")
   subscriptions AgentSubscription[]
 }
 
 model Agent {
   agent_id    String  @id @default(uuid()) @db.Uuid
-  tenant_id   String? @db.Uuid // Null for Global Marketplace agents
+  tenant_id   String? @db.Uuid 
   created_by  String  @db.Uuid
   agent_name  String
   description String? @db.Text
   status      String  @default("active")
-  
-  // MARKETPLACE FIELDS
   access_type String  @default("PRIVATE") // GLOBAL or PRIVATE
   is_public   Boolean @default(false)
 
@@ -47,6 +57,7 @@ model Agent {
   tenant             Tenant?      @relation(fields: [tenant_id], references: [tenant_id])
   creator            UserProfile @relation("CreatedBy", fields: [created_by], references: [user_id])
 }
+
 
 model AgentSubscription {
   id         String   @id @default(uuid()) @db.Uuid

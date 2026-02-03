@@ -10,11 +10,12 @@ async def hydrate_agent(record) -> Agent:
 
     provider = m_cfg.model_provider.lower() if m_cfg else "openai"
     model_id = m_cfg.model_name if m_cfg else "gpt-4o"
+    temp = float(m_cfg.temperature) if m_cfg else 0.7
 
     if provider == "google":
-        model = Gemini(id=model_id, temperature=m_cfg.temperature)
+        model = Gemini(id=model_id, temperature=temp)
     else:
-        model = OpenAIChat(id=model_id, temperature=m_cfg.temperature)
+        model = OpenAIChat(id=model_id, temperature=temp)
 
     return Agent(
         name=record.agent_name,

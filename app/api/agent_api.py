@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Body
 from app.services.agentrunner import run_agent_secured
 from app.services.agent_service import AgentService
-from app.api.schemas import AgentCreate, AgentSubscribe, AgentRunRequest,AgentUpdate
+from app.schemas.agent_schema import AgentCreate, AgentSubscribe, AgentRunRequest,AgentUpdate
 from app.core.db import db
 
 router = APIRouter()
@@ -9,6 +9,22 @@ router = APIRouter()
 @router.get("/marketplace")
 async def get_marketplace():
     return await AgentService.get_marketplace()
+
+@router.post("/agents")
+async def create_agent_endpoint(payload: AgentCreate):
+    try:
+        # Business Rule: If creating a GLOBAL agent, tenant_id should be None
+        if payload.access_type == "GLOBAL" and payload.tenant_id is not None:
+             payload.tenant_id = None
+             
+        new_agent = await AgentService.create_agent(payload)
+        return {
+            "status": "success",
+            "message": f"Agent {new_agent.agent_name} created successfully",
+            "agent_id": new_agent.agent_id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Creation failed: {str(e)}")
 
 @router.post("/subscribe")
 async def subscribe(payload: AgentSubscribe):
