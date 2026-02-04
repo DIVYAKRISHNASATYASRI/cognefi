@@ -1,32 +1,18 @@
-import asyncio
-from app.core.db import db
+import jwt
+import time
 
-async def seed():
-    await db.connect()
-    
-    # Super Admin configuration (should match environment or manual Clerk setup)
-    admin_email = "admin@cognefi.com"
-    clerk_user_id = "user_399p1J2KRKvFUSbDV1NM8RrZCYY"
-    
-    # 1. Create Super Admin (No tenant context)
-    # Check if exists
-    existing = await db.userprofile.find_unique(where={"email": admin_email})
-    if existing:
-        print(f"Super Admin {admin_email} already exists.")
-    else:
-        user = await db.userprofile.create(
-            data={
-                "clerk_user_id": clerk_user_id,
-                "full_name": "Super Admin",
-                "email": admin_email,
-                "role": "SUPER_ADMIN",
-                "status": "active"
-            }
-        )
-        print(f"✅ Super Admin Seeded Successfully: {user.email}")
-    
-    await db.disconnect()
+# Paste your token from Swagger here
+token = "eyJhbGciOiJSUzI1NiIsImNhdCI6ImNsX0I3ZDRQRDExMUFBQSIsImtpZCI6Imluc18zOUNSR3RaR2s3Z0xnSFUwOU1oRVJVSnFkZ3UiLCJ0eXAiOiJKV1QifQ.eyJleHAiOjE3NzAyMDM5MjcsImZ2YSI6Wzk5OTk5LC0xXSwiaWF0IjoxNzcwMjAwMzI3LCJpc3MiOiJodHRwczovL2ludGVybmFsLW1vbml0b3ItODMuY2xlcmsuYWNjb3VudHMuZGV2IiwibmJmIjoxNzcwMjAwMzE3LCJzaWQiOiJzZXNzXzM5Q1cyYTlRQVdmTUdFQWUxdThZNEFqRWRZWiIsInN0cyI6ImFjdGl2ZSIsInN1YiI6InVzZXJfMzlDUk1HSnhmZXBWdVFIYkJFT2tpR3ZQb1BoIiwidiI6Mn0.puO04J3u3HOYF4svP9ZvQzjATa0SWaZ3VvJeoSW5WdOxCWtWIOkmWVsYlP4CXpoLg4Kuh6GQkeCChkzTyLK12G8498BdlfL0LIMF9pJtrzXMMyjZhe15y4MdH6JaTs76AIRAl9ayxG9tbP1strKBwVvMPQ8CAxL2DONFQycz_FLqcj3ZxM-t5MCHTz8L8XKZlnogZuwqfjjMBwKS50gYJOLYlmyMSa6t_MwMu2Fe84iViV4XlPmokR6cWqwXb8MCNpGIzwSLHum08Dww5yG1aK8glZPy6QpiVQWqjlApgc0ZCLz4IkrSdLaw3fnbD9465u5jyFqKKHPLbIgmP6xLSg"
 
+payload = jwt.decode(token, options={"verify_signature": False})
+iat = payload.get('iat')
+now = int(time.time())
 
-if __name__ == "__main__":
-    asyncio.run(seed())
+print(f"Token Issued At (iat): {iat}")
+print(f"Current System Time:   {now}")
+print(f"Difference:            {iat - now} seconds")
+
+if iat > now:
+    print("❌ Your computer clock is BEHIND Clerk's server. Please sync your Windows/Mac clock.")
+else:
+    print("✅ Time is okay.")
