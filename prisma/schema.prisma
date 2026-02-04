@@ -25,16 +25,66 @@ model Tenant {
 model UserProfile {
   user_id       String              @id @default(uuid()) @db.Uuid
   tenant_id     String?             @db.Uuid
+  clerk_user_id String?             @unique  // clerk_user_id from Clerk
   full_name     String
   email         String              @unique
-  role          String              @default("USER") // TENANT_ADMIN, USER
-  status        String              @default("active")
+  role          String              @default("USER") // SUPER_ADMIN, TENANT_ADMIN, USER
+  status        String              @default("active") // active, disabled, pending
   permissions   Json?               // For manage_users, manage_agents
   created_at    DateTime            @default(now())
 
   tenant        Tenant?             @relation(fields: [tenant_id], references: [tenant_id])
   agents        Agent[]             @relation("CreatedBy")
   subscriptions AgentSubscription[]
+  auth_tokens   AuthToken[]
+  login_otps    LoginOTP[]
+  audit_logs    AuthAuditLog[]
+}
+
+model AuthToken {
+  token_id    String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  token_type  String   // "password_setup", "password_reset"
+  token_hash  String   @unique
+  expires_at  DateTime
+  used_at     DateTime?
+  created_at  DateTime @default(now())
+  
+  user        UserProfile @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([token_hash])
+  @@index([user_id])
+}
+
+model LoginOTP {
+  otp_id      String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid
+  otp_code    String
+  expires_at  DateTime
+  verified_at DateTime?
+  ip_address  String?
+  user_agent  String?
+  created_at  DateTime @default(now())
+  
+  user        UserProfile @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([user_id, created_at])
+}
+
+model AuthAuditLog {
+  log_id      String   @id @default(uuid()) @db.Uuid
+  user_id     String?  @db.Uuid
+  event_type  String   // "register", "login", "otp_sent", "otp_verified", "password_reset"
+  status      String   // "success", "failed"
+  ip_address  String?
+  user_agent  String?
+  metadata    Json?
+  created_at  DateTime @default(now())
+  
+  user        UserProfile? @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  
+  @@index([user_id, created_at])
+  @@index([event_type])
 }
 
 model Agent {
@@ -57,6 +107,7 @@ model Agent {
   tenant             Tenant?      @relation(fields: [tenant_id], references: [tenant_id])
   creator            UserProfile @relation("CreatedBy", fields: [created_by], references: [user_id])
 }
+
 
 
 model AgentSubscription {

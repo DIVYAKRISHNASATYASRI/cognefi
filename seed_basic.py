@@ -4,30 +4,29 @@ from app.core.db import db
 async def seed():
     await db.connect()
     
-    # 1. Create Tenant (Now with the required tenant_code)
-    tenant = await db.tenant.create(
-        data={
-            "tenant_name": "Main Platform",
-            "tenant_code": "MAIN001", 
-            "industry": "Software",
-            "subscription_plan": "pro"
-        }
-    )
+    # Super Admin configuration (should match environment or manual Clerk setup)
+    admin_email = "admin@cognefi.com"
+    clerk_user_id = "user_399p1J2KRKvFUSbDV1NM8RrZCYY"
     
-    # 2. Create User
-    user = await db.userprofile.create(
-        data={
-            "tenant_id": tenant.tenant_id,
-            "full_name": "Super Admin",
-            "email": "admin@cognefi.com",
-            "role": "SUPERADMIN"
-        }
-    )
+    # 1. Create Super Admin (No tenant context)
+    # Check if exists
+    existing = await db.userprofile.find_unique(where={"email": admin_email})
+    if existing:
+        print(f"Super Admin {admin_email} already exists.")
+    else:
+        user = await db.userprofile.create(
+            data={
+                "clerk_user_id": clerk_user_id,
+                "full_name": "Super Admin",
+                "email": admin_email,
+                "role": "SUPER_ADMIN",
+                "status": "active"
+            }
+        )
+        print(f"✅ Super Admin Seeded Successfully: {user.email}")
     
-    print(f"✅ DB Seeded Successfully!")
-    print(f"TENANT_ID: {tenant.tenant_id}")
-    print(f"USER_ID: {user.user_id}")
     await db.disconnect()
+
 
 if __name__ == "__main__":
     asyncio.run(seed())
