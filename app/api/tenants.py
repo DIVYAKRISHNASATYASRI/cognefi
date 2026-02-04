@@ -8,12 +8,15 @@ from prisma import Json
 from app.services.clerk_service import create_clerk_user
 from app.services.email_service import send_password_setup_email
 from app.services.token_service import create_password_setup_token
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
 @router.get("/", response_model=list[TenantResponse])
 async def list_tenants(current_user=Depends(require_role("SUPER_ADMIN"))):
-    return await db.tenant.find_many()
+    """List all tenants - restricted to Super Admins."""
+    return await db.tenant.find_many(order={"created_at": "desc"})
 
 @router.post("/")
 async def create_tenant(
@@ -21,25 +24,27 @@ async def create_tenant(
     current_user=Depends(require_role("SUPER_ADMIN"))
 ):
     """
-    Create a new tenant and its initial admin user.
-    Automatically creates a Clerk user and sends a password setup email.
+    1. Checks if Tenant/User exists.
+    2. Creates User in Clerk Cloud.
+    3. Creates Tenant & User in Local DB.
+    4. Sends Activation Email.
     """
-    # 1. Check for existing tenant code
-    existing = await db.tenant.find_unique(where={"tenant_code": payload.tenant_code})
-    if existing:
+    # Check for existing tenant code
+    existing_tenant = await db.tenant.find_unique(where={"tenant_code": payload.tenant_code})
+    if existing_tenant:
         raise HTTPException(status_code=400, detail="Tenant code already exists")
 
-    # 2. Check if admin email already exists
+    # Check for existing user email
     existing_user = await db.userprofile.find_unique(where={"email": payload.admin_email})
     if existing_user:
         raise HTTPException(status_code=400, detail="Admin email already registered")
 
     try:
-        # 3. Create user in Clerk first (without password)
+        # Create user in Clerk first
         clerk_user_id = await create_clerk_user(payload.admin_email, payload.admin_name)
         
         async with db.tx() as tx:
-            # 4. Create Tenant
+            # Create Tenant
             tenant = await tx.tenant.create(
                 data={
                     "tenant_name": payload.tenant_name,
@@ -49,7 +54,7 @@ async def create_tenant(
                 }
             )
             
-            # 5. Create Admin UserProfile
+            # Create Admin UserProfile linked to Clerk
             user = await tx.userprofile.create(
                 data={
                     "tenant_id": tenant.tenant_id,
@@ -57,29 +62,26 @@ async def create_tenant(
                     "full_name": payload.admin_name,
                     "email": payload.admin_email,
                     "role": "TENANT_ADMIN",
-                    "status": "pending",  # Active after password setup
+                    "status": "pending", # Pending until password set
                     "permissions": Json({"manage_users": True, "manage_agents": True})
                 }
             )
             
-            # 6. Generate Password Setup Token
+            # Generate Setup Token for the invitation email
             setup_token = await create_password_setup_token(user.user_id, db_client=tx)
             
-            # 7. Send Setup Email
+            # Send Email (SMTP)
             await send_password_setup_email(user.email, user.full_name, setup_token)
             
             return {
-                "message": "Tenant and Admin created successfully. Password setup email sent.",
+                "message": "Tenant created and invitation sent.",
                 "tenant_id": tenant.tenant_id,
-                "tenant_code": tenant.tenant_code,
                 "admin_email": user.email
             }
             
     except Exception as e:
-        # If DB fails, we should ideally delete the Clerk user, but for now we log
-        import logging
-        logging.getLogger(__name__).error(f"Tenant creation failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create tenant: {str(e)}")
+        logger.error(f"Tenant creation flow failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Operation failed: {str(e)}")
 
 @router.patch("/{tenant_id}")
 async def update_tenant(
@@ -87,7 +89,7 @@ async def update_tenant(
     payload: UpdateTenantRequest,
     current_user=Depends(require_role("SUPER_ADMIN", "TENANT_ADMIN"))
 ):
-    # Tenant admins can only update their own tenant
+    """Update tenant details. Tenant Admins can only update their own."""
     if current_user.role == "TENANT_ADMIN" and str(current_user.tenant_id) != tenant_id:
         raise HTTPException(status_code=403, detail="Not authorized to update this tenant")
 
@@ -100,4 +102,7 @@ async def update_tenant_status(
     payload: UpdateTenantStatusRequest,
     current_user=Depends(require_role("SUPER_ADMIN"))
 ):
+    """Suspend or Activate a tenant - Super Admin only."""
+    if payload.status not in ["active", "suspended"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
     return await db.tenant.update(where={"tenant_id": tenant_id}, data={"status": payload.status})

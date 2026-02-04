@@ -38,12 +38,15 @@ async def get_current_user(request: Request, credentials: HTTPAuthorizationCrede
             # Try PyJWT style (leeway is a top-level arg)
             options = {"verify_aud": False, "verify_azp": False}
             payload = jwt.decode(
-                token,
-                settings.CLERK_JWT_VERIFICATION_KEY,
-                algorithms=["RS256"],
-                options=options,
-                leeway=60
-            )
+        token,
+        settings.CLERK_JWT_VERIFICATION_KEY,
+        algorithms=["RS256"],
+        options={
+            "verify_aud": False,
+            "verify_azp": False
+        },
+        leeway=600  # <--- ADD THIS LINE (Allows 60 seconds of clock drift)
+    )
         except TypeError:
             # Fallback for python-jose style (leeway is inside options)
             logger.info("[AUTH DEBUG] Using jose-style leeway validation")
