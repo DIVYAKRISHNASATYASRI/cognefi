@@ -75,22 +75,6 @@ class AgentService:
         )
 
     @staticmethod
-    async def create_agent(data: AgentCreate):
-        return await db.agent.create(
-            data={
-                "tenant_id": data.tenant_id,
-                "created_by": data.created_by,
-                "agent_name": data.agent_name,
-                "access_type": data.access_type,
-                "is_public": data.is_public,
-                "agent_model_config": {"create": {"model_provider": data.model_provider, "model_name": data.model_name, "temperature": data.temperature}},
-                "prompts": {"create": [{"instructions": data.instructions, "system_message": data.system_message, "is_active": True}]},
-                "ops_config": {"create": {}},
-                "memory_config": {"create": {}}
-            }
-        )
-
-    @staticmethod
     async def update_agent(agent_id: str, data: AgentUpdate):
         """
         Updates agent configuration across multiple tables.

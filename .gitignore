@@ -1,5 +1,5 @@
 # Python
-__pycache__/
+__pycache__
 *.py[cod]
 *$py.class
 *.so
@@ -39,5 +39,9 @@ ENV/
 
 # Logs
 *.log
+
+files_md.sh
+code.txt
+steps.txt
 
 

@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  cerbos:
+    image: ghcr.io/cerbos/cerbos:latest
+    container_name: cerbos
+    ports:
+      - "3592:3592"
+      - "3593:3593"
+    volumes:
+      - ./cerbos/config.yaml:/config/config.yaml
+      - ./cerbos/policies:/policies
+    command: server --config=/config/config.yaml
+    restart: unless-stopped

@@ -1,0 +1,162 @@
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: agent
+  version: "default"
+
+  rules:
+
+    # =================================================
+    # CREATE AGENT
+    # =================================================
+    - actions: ["create"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin", "tenant_admin"]
+
+    - actions: ["create"]
+      effect: EFFECT_DENY
+      roles: ["user"]
+
+    # =================================================
+    # READ / LIST AGENTS
+    # =================================================
+
+    # Super admin can see everything
+    - actions: ["read", "list"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    # Tenant admin:
+    # - can see GLOBAL marketplace agents (before subscription)
+    # - can see their own subscribed agents
+    - actions: ["read", "list"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.visibility == "GLOBAL"
+            || (
+              request.resource.attr.owner_tenant_id == request.principal.attr.tenant_id
+              && request.resource.attr.subscribed == true
+            )
+
+    # User:
+    # - can see only agents of their tenant
+    # - only after subscription
+    - actions: ["read", "list"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.owner_tenant_id == request.principal.attr.tenant_id
+            && request.resource.attr.subscribed == true
+
+    # =================================================
+    # UPDATE AGENT
+    # =================================================
+
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.owner_tenant_id == request.principal.attr.tenant_id
+            && request.resource.attr.subscribed == true
+
+    - actions: ["update"]
+      effect: EFFECT_DENY
+      roles: ["user"]
+
+    # =================================================
+    # DELETE AGENT (soft delete)
+    # =================================================
+
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.owner_tenant_id == request.principal.attr.tenant_id
+            && request.resource.attr.subscribed == true
+
+    - actions: ["delete"]
+      effect: EFFECT_DENY
+      roles: ["user"]
+
+    # =================================================
+    # RUN / EXECUTE AGENT
+    # =================================================
+
+    - actions: ["run"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.owner_tenant_id == request.principal.attr.tenant_id
+            && request.resource.attr.subscribed == true
+
+    - actions: ["run"]
+      effect: EFFECT_DENY
+      roles: ["super_admin", "user"]
+
+    # =================================================
+    # SUBSCRIBE / UNSUBSCRIBE
+    # =================================================
+
+    # Subscription allowed only for GLOBAL agents
+    - actions: ["subscribe", "unsubscribe"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.resource.attr.visibility == "GLOBAL"
+
+    - actions: ["subscribe", "unsubscribe"]
+      effect: EFFECT_DENY
+      roles: ["super_admin", "user"]
+
+    # =================================================
+    # CHANGE VISIBILITY
+    # =================================================
+
+    # Tenant admin can request visibility change
+    # only for their own agents
+    - actions: ["change_visibility"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.resource.attr.owner_tenant_id == request.principal.attr.tenant_id
+
+    - actions: ["change_visibility"]
+      effect: EFFECT_DENY
+      roles: ["super_admin", "user"]
+
+    # =================================================
+    # EXECUTION HISTORY
+    # =================================================
+
+    - actions: ["read_execution_history"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin", "user"]
+      condition:
+        match:
+          expr: >
+            request.resource.attr.owner_tenant_id == request.principal.attr.tenant_id
+            && request.resource.attr.subscribed == true
+
+    - actions: ["read_execution_history"]
+      effect: EFFECT_DENY
+      roles: ["super_admin"]

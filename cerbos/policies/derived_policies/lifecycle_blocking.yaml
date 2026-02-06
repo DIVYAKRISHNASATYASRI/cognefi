@@ -1,0 +1,22 @@
+apiVersion: api.cerbos.dev/v1
+
+derivedRoles:
+  name: lifecycle_blocking
+  definitions:
+    - name: tenant_not_active
+      parentRoles:
+        - "*"
+      condition:
+        match:
+          expr: >
+            request.principal.attr.tenant_status != null
+            && request.principal.attr.tenant_status != "ACTIVE"
+
+    - name: user_not_active
+      parentRoles:
+        - "*"
+      condition:
+        match:
+          expr: >
+            request.principal.attr.user_status != null
+            && request.principal.attr.user_status != "ACTIVE"

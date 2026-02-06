@@ -1,0 +1,76 @@
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: tenant
+  version: "default"
+
+  rules:
+
+    # -------------------------------------------------
+    # CREATE TENANT
+    # -------------------------------------------------
+    - actions: ["create"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    # -------------------------------------------------
+    # READ / GET TENANT
+    # -------------------------------------------------
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin", "user"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # -------------------------------------------------
+    # LIST TENANTS
+    # -------------------------------------------------
+    - actions: ["list"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    # - actions: ["list"]
+    #   effect: EFFECT_ALLOW
+    #   roles: ["tenant_admin", "user"]
+    #   condition:
+    #     match:
+    #       expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # -------------------------------------------------
+    # UPDATE TENANT (limited fields – enforced in app)
+    # -------------------------------------------------
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # -------------------------------------------------
+    # SUSPEND TENANT
+    # -------------------------------------------------
+    - actions: ["suspend"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    # -------------------------------------------------
+    # DEACTIVATE TENANT
+    # -------------------------------------------------
+    - actions: ["deactivate"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]
+
+    # -------------------------------------------------
+    # DELETE TENANT (soft delete)
+    # -------------------------------------------------
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      roles: ["super_admin"]

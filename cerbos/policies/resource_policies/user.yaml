@@ -1,0 +1,108 @@
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: user
+  version: "default"
+
+  rules:
+
+    # -------------------------------------------------
+    # CREATE USER
+    # -------------------------------------------------
+    - actions: ["create"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # -------------------------------------------------
+    # READ USER
+    # -------------------------------------------------
+    # Super admin has NO visibility into tenant users
+    - actions: ["read"]
+      effect: EFFECT_DENY
+      roles: ["super_admin"]
+
+    # Tenant admin can read users in own tenant
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # User can read own profile only
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          expr: request.principal.id == request.resource.id
+
+    # -------------------------------------------------
+    # LIST USERS
+    # -------------------------------------------------
+    - actions: ["list"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    - actions: ["list"]
+      effect: EFFECT_DENY
+      roles: ["super_admin", "user"]
+
+    # -------------------------------------------------
+    # UPDATE USER PROFILE
+    # -------------------------------------------------
+    # User updating own profile fields
+    - actions: ["update_profile"]
+      effect: EFFECT_ALLOW
+      roles: ["user"]
+      condition:
+        match:
+          expr: request.principal.id == request.resource.id
+
+    # Tenant admin updating users in own tenant
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # -------------------------------------------------
+    # UPDATE ROLE (restricted)
+    # -------------------------------------------------
+    # Explicit deny to prevent escalation
+    - actions: ["update_role"]
+      effect: EFFECT_DENY
+      roles: ["tenant_admin", "user", "super_admin"]
+
+    # -------------------------------------------------
+    # UPDATE STATUS (suspend / deactivate)
+    # -------------------------------------------------
+    - actions: ["suspend", "deactivate"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # -------------------------------------------------
+    # DELETE USER (soft delete)
+    # -------------------------------------------------
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      roles: ["tenant_admin"]
+      condition:
+        match:
+          expr: request.principal.attr.tenant_id == request.resource.attr.tenant_id
+
+    # -------------------------------------------------
+    # FALLBACK DENY
+    # -------------------------------------------------
+    # - actions: ["*"]
+    #   roles: ["*"]
+    #   effect: EFFECT_DENY

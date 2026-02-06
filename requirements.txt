@@ -1,8 +1,12 @@
 agno
 openai
 google-generativeai
+google-genai
 fastapi
 uvicorn
 prisma
 python-dotenv
 pydantic
+cerbos
+python-dotenv
+bcrypt

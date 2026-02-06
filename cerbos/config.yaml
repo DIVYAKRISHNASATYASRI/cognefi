@@ -1,0 +1,34 @@
+# cerbos/config.yaml
+server:
+  httpListenAddr: ":3592"
+  grpcListenAddr: ":3593"
+
+storage:
+  driver: disk
+  disk:
+    directory: /policies
+    watchForChanges: true
+
+logLevel: DEBUG
+
+
+#==============================================
+#Postgres cerbos configuration
+#==============================================
+
+# storage:
+#   driver: postgres
+#   postgres:
+#     url: "${CERBOS_DATABASE_URL}"
+
+# server:
+#   httpListenAddr: ":3592"
+#   grpcListenAddr: ":3593"
+
+#   adminAPI:
+#     enabled: true
+#     adminCredentials:
+#       username: "${CERBOS_ADMIN_USERNAME}"
+#       passwordHash: "${CERBOS_ADMIN_PASSWORD}"
+
+# logLevel: DEBUG
